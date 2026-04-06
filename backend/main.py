@@ -5,10 +5,14 @@ from dotenv import load_dotenv
 from database import db
 import asyncio
 from datetime import datetime
+from routers.sensors import router as sensors_router
 
 load_dotenv()
 
 app = FastAPI()
+
+# Include the router
+app.include_router(sensors_router, prefix="/sensors")
 
 # Start MQTT in FastAPI startup event
 @app.on_event("startup")
@@ -44,8 +48,3 @@ async def test_db():
             "status": "error",
             "message": str(e)
         }
-
-@app.get("/sensors/latest")
-async def get_latest(limit: int = 10):
-    data = await db.sensors.find().sort("timestamp", -1).to_list(limit)
-    return data

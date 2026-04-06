@@ -1,4 +1,5 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { SoundCard } from "@/components/real-time-cards/SoundCard";
 import { LayoutDashboard } from "lucide-react";
 
 const Index = () => {
@@ -14,6 +15,16 @@ const Index = () => {
             <p className="text-sm text-muted-foreground max-w-sm">
               Add widgets, charts, and metrics to get started with your analytics overview.
             </p>
+            <div>
+        
+        <SoundCard
+          sound={70}           // temporary static value
+          history={[20, 30, 40, 45]} // mock data
+          min={20}
+          max={45}
+        />
+
+      </div>
           </div>
         </div>
       </div>
