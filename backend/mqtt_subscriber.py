@@ -7,6 +7,7 @@ import os
 import asyncio
 import ssl
 from queue import Queue
+from routers.sensors import broadcast  
 
 fastapi_loop = None
 mqtt_client = None
@@ -42,8 +43,19 @@ def on_message(client, userdata, msg):
         data["timestamp"] = datetime.fromisoformat(data["timestamp"].replace("Z", "+00:00"))
         
         # Put data in thread-safe queue for processing
+        # 🔥 DB queue (unchanged)
         data_queue.put(data)
-        print(f"📤 Data queued for database insertion")
+
+        # 🔥 WebSocket broadcast (FIXED)
+        if fastapi_loop:
+            broadcast_data = {**data, "timestamp": data["timestamp"].isoformat()}
+            asyncio.run_coroutine_threadsafe(
+                broadcast(broadcast_data),
+                fastapi_loop
+            )
+
+        print("📤 Data queued + broadcast triggered")
+
 
     except json.JSONDecodeError as e:
         print(f"❌ JSON parsing error: {e}")

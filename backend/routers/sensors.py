@@ -1,18 +1,33 @@
 # routes/sensors.py
-from fastapi import APIRouter, WebSocket
-from mqtt_subscriber import data_queue
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 import asyncio
 
 router = APIRouter()
+
+connected_clients = set()
+
 @router.websocket("/ws/sensors")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
+    connected_clients.add(websocket)
+    print(f"✅ Client connected. Total: {len(connected_clients)}")
     try:
         while True:
-            if not data_queue.empty():
-                data = data_queue.get(block=False)
-                await websocket.send_json(data)
-            else:
-                await asyncio.sleep(0.1)  # Sleep briefly to avoid busy waiting
-    except Exception as e:
-        print(f"WebSocket error: {e}")
+            await asyncio.sleep(1)
+    except WebSocketDisconnect:
+        print("📴 Client disconnected")
+    finally:
+        connected_clients.discard(websocket)  
+
+
+async def broadcast(data):
+    print(f"📡 Broadcasting to {len(connected_clients)} clients: {data}")
+    dead = []
+    for client in connected_clients:
+        try:
+            await client.send_json(data)
+        except Exception as e:
+            print(f"❌ WebSocket send failed: {e}")  
+            dead.append(client)
+    for d in dead:
+        connected_clients.remove(d)

@@ -1,5 +1,6 @@
 # main.py
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware  # ADD
 from mqtt_subscriber import start_mqtt, stop_mqtt
 from dotenv import load_dotenv
 from database import db
@@ -11,10 +12,18 @@ load_dotenv()
 
 app = FastAPI()
 
-# Include the router
-app.include_router(sensors_router, prefix="/sensors")
+# ADD CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# Start MQTT in FastAPI startup event
+# FIX: remove prefix so WebSocket is at /ws/sensors not /sensors/ws/sensors
+app.include_router(sensors_router)
+
 @app.on_event("startup")
 async def startup_event():
     loop = asyncio.get_running_loop()
@@ -30,21 +39,9 @@ def root():
 
 @app.get("/test/db")
 async def test_db():
-    """Test database connection"""
     try:
-        # Try to insert a test document
-        test_data = {
-            "test": True,
-            "timestamp": datetime.now()
-        }
+        test_data = {"test": True, "timestamp": datetime.now()}
         result = await db.sensors.insert_one(test_data)
-        return {
-            "status": "success",
-            "message": "Database connection working",
-            "inserted_id": str(result.inserted_id)
-        }
+        return {"status": "success", "inserted_id": str(result.inserted_id)}
     except Exception as e:
-        return {
-            "status": "error",
-            "message": str(e)
-        }
+        return {"status": "error", "message": str(e)}

@@ -1,5 +1,5 @@
 fastapi 
-uvicorn 
+uvicorn[standard]
 paho-mqtt 
 motor 
 python-dotenv
