@@ -1,0 +1,4 @@
+# min_temp,min_humidity
+# max_temp,max_humidity
+24.0000 48.9000
+31.9000 86.5000
