@@ -1,0 +1,13 @@
+# Data files
+*.csv
+
+# Model binaries
+*.pkl
+models/*.pkl
+
+# Logs
+logs/
+*.log
+
+# Keep these small files (exceptions)
+!analysis_metadata.json
