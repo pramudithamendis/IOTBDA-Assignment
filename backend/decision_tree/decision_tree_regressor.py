@@ -263,7 +263,8 @@ class SleepQualityAnalytics:
         feature_columns = [
             'avg_temperature', 'max_temperature', 'min_temperature', 'temp_range', 'temp_std',
             'temp_above_28_count', 'temp_above_28_pct', 'temp_below_24_count',
-            'temp_deviation_from_optimal', 'thermal_discomfort_score',
+            'temp_deviation_from_optimal', 
+            # 'thermal_discomfort_score',
             'avg_humidity', 'max_humidity', 'min_humidity', 'humidity_std',
             'high_humidity_count', 'humidity_deviation',
             'avg_light', 'max_light', 'light_exposure_minutes', 'light_spikes',
