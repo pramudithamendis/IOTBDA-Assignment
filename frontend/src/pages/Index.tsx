@@ -7,7 +7,7 @@ import { ConnectionCard } from "@/components/ConnectionCard";
 
 const Index = () => {
   const [sound, setSound] = useState(0);
-  const [history, setHistory] = useState([]);
+  const [history, setHistory] = useState<number[]>([]);
 
   const [temperature, setTemperature] = useState(0);
   const [tempHistory, setTempHistory] = useState<number[]>([]);
@@ -15,26 +15,44 @@ const Index = () => {
   const [humidity, setHumidity] = useState(0);
   const [humidityHistory, setHumidityHistory] = useState<number[]>([]);
 
-  // connection state
   const [isConnected, setIsConnected] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [updateCount, setUpdateCount] = useState(0);
-  
+
   useEffect(() => {
 
-    // Load initial values from MongoDB
-    fetch('http://localhost:8000/api/sensors/latest?limit=1')
-      .then(res => res.json())
-      .then(data => {
-        if (data && data.length > 0) {
-          const latest = data[0];
-          if (latest.temperature) setTemperature(latest.temperature);
-          if (latest.humidity) setHumidity(latest.humidity);
-          if (latest.sound_level) setSound(latest.sound_level);
-        }
-      })
-      .catch(err => console.error('Initial load failed:', err));
+    // =========================
+    // 1. MONGO FALLBACK (ONCE)
+    // =========================
+    const loadFallback = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/api/sensors/latest?limit=20");
+        const data = await res.json();
 
+        if (!Array.isArray(data) || data.length === 0) return;
+
+        const latest = data[0]; // already sorted newest first
+
+        setTemperature(Number(latest.temperature ?? 0));
+        setHumidity(Number(latest.humidity ?? 0));
+        setSound(Number(latest.sound_level ?? 0));
+
+        setTempHistory(data.map(d => Number(d.temperature ?? 0)));
+        setHumidityHistory(data.map(d => Number(d.humidity ?? 0)));
+        setHistory(data.map(d => Number(d.sound_level ?? 0)));
+
+        setLastUpdated(latest.timestamp ?? null);
+
+      } catch (err) {
+        console.error("Fallback load failed:", err);
+      }
+    };
+
+    loadFallback();
+
+    // =========================
+    // 2. WEBSOCKET (LIVE)
+    // =========================
     let socket: WebSocket;
     let reconnectTimer: ReturnType<typeof setTimeout>;
 
@@ -43,39 +61,39 @@ const Index = () => {
 
       socket.onopen = () => {
         setIsConnected(true);
-        console.log("WebSocket connected");
       };
 
       socket.onclose = () => {
         setIsConnected(false);
-        console.log("WebSocket disconnected, retrying in 2s...");
-        reconnectTimer = setTimeout(connect, 2000); // retry after 2s
+        reconnectTimer = setTimeout(connect, 2000);
       };
 
       socket.onerror = () => {
         setIsConnected(false);
-        socket.close(); // triggers onclose → reconnect
+        socket.close();
       };
 
       socket.onmessage = (event) => {
         const data = JSON.parse(event.data);
 
-        if (data.sound_level !== undefined) {
-          setSound(data.sound_level);
-          setHistory((prev) => [...prev, data.sound_level].slice(-20));
-          setLastUpdated(new Date().toISOString());
-          setUpdateCount((prev) => prev + 1);
-        }
-
+        // LIVE OVERRIDES FALLBACK
         if (data.temperature !== undefined) {
-          setTemperature(data.temperature);
-          setTempHistory((prev) => [...prev, data.temperature].slice(-20));
+          setTemperature(Number(data.temperature));
+          setTempHistory(prev => [...prev, Number(data.temperature)].slice(-20));
         }
 
         if (data.humidity !== undefined) {
-          setHumidity(data.humidity);
-          setHumidityHistory((prev) => [...prev, data.humidity].slice(-20));
+          setHumidity(Number(data.humidity));
+          setHumidityHistory(prev => [...prev, Number(data.humidity)].slice(-20));
         }
+
+        if (data.sound_level !== undefined) {
+          setSound(Number(data.sound_level));
+          setHistory(prev => [...prev, Number(data.sound_level)].slice(-20));
+        }
+
+        setLastUpdated(new Date().toISOString());
+        setUpdateCount(prev => prev + 1);
       };
     };
 
@@ -87,20 +105,23 @@ const Index = () => {
     };
   }, []);
 
-  // safe min/max handling
+  // =========================
+  // MIN/MAX
+  // =========================
   const minValue = history.length ? Math.min(...history) : sound;
   const maxValue = history.length ? Math.max(...history) : sound;
-  
+
   const tempMin = tempHistory.length ? Math.min(...tempHistory) : temperature;
   const tempMax = tempHistory.length ? Math.max(...tempHistory) : temperature;
-  
+
   const humidityMin = humidityHistory.length ? Math.min(...humidityHistory) : humidity;
   const humidityMax = humidityHistory.length ? Math.max(...humidityHistory) : humidity;
 
   return (
     <DashboardLayout title="Dashboard">
+
       <div className="flex flex-col w-full h-full p-6">
-        {/* Connection status at top */}
+
         <div className="mb-6">
           <ConnectionCard
             isConnected={isConnected}
@@ -109,15 +130,15 @@ const Index = () => {
           />
         </div>
 
-        {/* Sensor cards grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+
           <TemperatureCard
             temperature={temperature}
             history={tempHistory}
             min={tempMin}
             max={tempMax}
           />
-          
+
           <HumidityCard
             humidity={humidity}
             history={humidityHistory}
@@ -138,8 +159,10 @@ const Index = () => {
             min={minValue}
             max={maxValue}
           />
+
         </div>
       </div>
+
     </DashboardLayout>
   );
 };
