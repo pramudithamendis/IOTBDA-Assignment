@@ -1,0 +1,58 @@
+{
+  "created_date": "2026-04-19T19:18:29.050662",
+  "total_sessions": 11,
+  "regression_model": {
+    "type": "DecisionTreeRegressor",
+    "num_features": 26,
+    "hyperparameters": {
+      "max_depth": 3,
+      "min_samples_split": 5,
+      "min_samples_leaf": 1
+    },
+    "top_features": [
+      {
+        "feature": "avg_temperature",
+        "importance": 0.5012652832902748
+      },
+      {
+        "feature": "max_noise",
+        "importance": 0.4987347167097252
+      },
+      {
+        "feature": "min_temperature",
+        "importance": 0.0
+      },
+      {
+        "feature": "temp_range",
+        "importance": 0.0
+      },
+      {
+        "feature": "temp_std",
+        "importance": 0.0
+      }
+    ]
+  },
+  "anomaly_detection": {
+    "type": "IsolationForest",
+    "contamination": 0.1,
+    "num_anomalies": 1,
+    "anomaly_percentage": 9.090909090909092
+  },
+  "clustering": {
+    "type": "KMeans",
+    "num_clusters": 5,
+    "cluster_distribution": {
+      "2": 4,
+      "4": 2,
+      "3": 2,
+      "0": 2,
+      "1": 1
+    }
+  },
+  "analysis_summary": {
+    "mean_sleep_quality": 65.5,
+    "std_sleep_quality": 15.592177525926264,
+    "mean_temperature": 27.090239747080748,
+    "mean_humidity": 60.44288878886072
+  }
+}
