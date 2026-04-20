@@ -1,3 +1,0 @@
-Original https://colab.research.google.com/drive/1n7AUJ6aTVwNvLHUIMU3Ee-pReTYhsQ8t
-Coverted https://colab.research.google.com/drive/1StXiCk9IO-meioZ1ROVJwzoct7uqDOlX#scrollTo=t4R9-pXPGhwN
-    Sleep_tinyml.ipynb
