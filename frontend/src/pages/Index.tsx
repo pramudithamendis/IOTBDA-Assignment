@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { SoundCard } from "@/components/real-time-cards/SoundCard";
+import { LightCard } from "@/components/real-time-cards/LightCard";
 import { ConnectionCard } from "@/components/ConnectionCard";
 
 const Index = () => {
   const [sound, setSound] = useState(0);
   const [history, setHistory] = useState([]);
+  const [lightIntensity, setLightIntensity] = useState(0);
+  const [lightIntensityHistory, setLightIntensityHistory] = useState([]);
 
   // connection state
   const [isConnected, setIsConnected] = useState(false);
@@ -45,6 +48,13 @@ const Index = () => {
         setLastUpdated(new Date().toISOString());
         setUpdateCount((prev) => prev + 1);
       }
+
+      if (data.light_intensity !== undefined) {
+        setLightIntensity(data.light_intensity);
+        setLightIntensityHistory((prev) => [...prev, data.light_intensity].slice(-20));
+        setLastUpdated(new Date().toISOString());
+        setUpdateCount((prev) => prev + 1);
+      }
     };
   };
 
@@ -59,6 +69,8 @@ const Index = () => {
   // safe min/max handling
   const minValue = history.length ? Math.min(...history) : sound;
   const maxValue = history.length ? Math.max(...history) : sound;
+  const minLightIntensityValue = lightIntensityHistory.length ? Math.min(...lightIntensityHistory) : lightIntensity;
+  const maxLightIntensityValue = lightIntensityHistory.length ? Math.max(...lightIntensityHistory) : lightIntensity;
 
   return (
     <DashboardLayout title="Dashboard">
@@ -74,11 +86,11 @@ const Index = () => {
 
         {/* Sensor cards grid - now fills the width */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
-          <SoundCard
-            sound={sound}
-            history={history}
-            min={minValue}
-            max={maxValue}
+          <LightCard
+            lightIntensity={lightIntensity}
+            history={lightIntensityHistory}
+            min={minLightIntensityValue}
+            max={maxLightIntensityValue}
           />
           
           <SoundCard
