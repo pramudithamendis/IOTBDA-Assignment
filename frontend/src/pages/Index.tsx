@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { SoundCard } from "@/components/real-time-cards/SoundCard";
 import { LightCard } from "@/components/real-time-cards/LightCard";
+import { TemperatureCard } from "@/components/real-time-cards/TemperatureCard";
+import { HumidityCard } from "@/components/real-time-cards/HumidityCard";
 import { ConnectionCard } from "@/components/ConnectionCard";
 
 const Index = () => {
@@ -9,7 +11,11 @@ const Index = () => {
   const [history, setHistory] = useState([]);
   const [lightIntensity, setLightIntensity] = useState(0);
   const [lightIntensityHistory, setLightIntensityHistory] = useState([]);
-
+  const [temperature, setTemperature] = useState(0);
+  const [tempHistory, setTempHistory] = useState([]);
+  const [humidity, setHumidity] = useState(0);
+  const [humidityHistory, setHumidityHistory] = useState([]);
+  
   // connection state
   const [isConnected, setIsConnected] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
@@ -55,6 +61,20 @@ const Index = () => {
         setLastUpdated(new Date().toISOString());
         setUpdateCount((prev) => prev + 1);
       }
+
+      if (data.temperature !== undefined) {
+        setTemperature(data.temperature);
+        setTempHistory((prev) => [...prev, data.temperature].slice(-20));
+        setLastUpdated(new Date().toISOString());
+        setUpdateCount((prev) => prev + 1);
+      }
+
+      if (data.humidity !== undefined) {
+        setHumidity(data.humidity);
+        setHumidityHistory((prev) => [...prev, data.humidity].slice(-20));
+        setLastUpdated(new Date().toISOString());
+        setUpdateCount((prev) => prev + 1);
+      }
     };
   };
 
@@ -71,6 +91,10 @@ const Index = () => {
   const maxValue = history.length ? Math.max(...history) : sound;
   const minLightIntensityValue = lightIntensityHistory.length ? Math.min(...lightIntensityHistory) : lightIntensity;
   const maxLightIntensityValue = lightIntensityHistory.length ? Math.max(...lightIntensityHistory) : lightIntensity;
+  const minTemp = tempHistory.length ? Math.min(...tempHistory) : temperature;
+  const maxTemp = tempHistory.length ? Math.max(...tempHistory): temperature;
+  const minHumidity = humidityHistory.length ? Math.min(...humidityHistory) : humidity;
+  const maxHumidity = humidityHistory.length ? Math.max(...humidityHistory) : humidity;
 
   return (
     <DashboardLayout title="Dashboard">
@@ -100,18 +124,18 @@ const Index = () => {
             max={maxValue}
           />
 
-          <SoundCard
-            sound={sound}
-            history={history}
-            min={minValue}
-            max={maxValue}
+          <TemperatureCard
+            temperature={temperature}
+            history={tempHistory}
+            min={minTemp}
+            max={maxTemp}
           />
 
-          <SoundCard
-            sound={sound}
-            history={history}
-            min={minValue}
-            max={maxValue}
+          <HumidityCard
+            humidity={humidity}
+            history={humidityHistory}
+            min={minHumidity}
+            max={maxHumidity}
           />
         </div>
       </div>
