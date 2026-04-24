@@ -5,6 +5,8 @@ import { LightCard } from "@/components/real-time-cards/LightCard";
 import { TemperatureCard } from "@/components/real-time-cards/TemperatureCard";
 import { HumidityCard } from "@/components/real-time-cards/HumidityCard";
 import { ConnectionCard } from "@/components/ConnectionCard";
+import { SleepReadinessCard } from "@/components/SleepReadinessCard";
+import { SleepQualityCard } from "@/components/SleepQualityCard";
 
 const Index = () => {
   const [sound, setSound] = useState(0);
@@ -105,6 +107,18 @@ const Index = () => {
             isConnected={isConnected}
             lastUpdated={lastUpdated}
             updateCount={updateCount}
+          />
+        </div>
+
+        {/* Sleep Summary Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+          <SleepQualityCard />
+
+          <SleepReadinessCard
+            temperature={temperature}
+            humidity={humidity}
+            sound={sound}
+            light={lightIntensity}
           />
         </div>
 
