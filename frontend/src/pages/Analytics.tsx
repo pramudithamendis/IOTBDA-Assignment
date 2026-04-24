@@ -7,10 +7,11 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 
 type Timeframe = "7d" | "30d" | "overnight";
-type MetricKey = "light" | "noise" | "temperature" | "humidity" | "movement";
+type MetricKey = "sleep_quality" | "light" | "noise" | "temperature" | "humidity" | "movement";
 
 type HistoricalPoint = {
   label: string;
+  sleep_quality?: number | null;
   light: number;
   noise: number;
   temperature: number;
@@ -23,6 +24,7 @@ const metricConfig: Record<
   MetricKey,
   { label: string; dataKey: MetricKey; color: string; unit: string }
 > = {
+  sleep_quality: { label: "Sleep Quality", dataKey: "sleep_quality", color: "#6366f1", unit: "score" },
   light: { label: "Light", dataKey: "light", color: "#e3a72f", unit: "lux" },
   noise: { label: "Noise", dataKey: "noise", color: "#8b5cf6", unit: "dB" },
   temperature: { label: "Temperature", dataKey: "temperature", color: "#ef4444", unit: "C" },
@@ -37,7 +39,7 @@ const timeframeButtons: Array<{ label: string; value: Timeframe }> = [
 ];
 
 const metricTabs: Array<{ label: string; value: MetricKey }> = [
-  { label: "Sleep Quality", value: "movement" },
+  { label: "Sleep Quality", value: "sleep_quality" },
   { label: "Light", value: "light" },
   { label: "Noise", value: "noise" },
   { label: "Temperature", value: "temperature" },
@@ -47,7 +49,7 @@ const metricTabs: Array<{ label: string; value: MetricKey }> = [
 
 const Analytics = () => {
   const [timeframe, setTimeframe] = useState<Timeframe>("7d");
-  const [activeMetric, setActiveMetric] = useState<MetricKey>("light");
+  const [activeMetric, setActiveMetric] = useState<MetricKey>("sleep_quality");
   const [chartPoints, setChartPoints] = useState<HistoricalPoint[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
