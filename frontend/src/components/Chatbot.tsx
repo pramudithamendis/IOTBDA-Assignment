@@ -1,0 +1,101 @@
+import { useState } from "react";
+import { MessageCircle, X } from "lucide-react";
+
+type Message = {
+  text: string;
+  sender: "user" | "bot";
+};
+
+export function Chatbot() {
+  const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+
+  const handleSend = () => {
+    if (!input.trim()) return;
+
+    const userMessage: Message = {
+      text: input,
+      sender: "user",
+    };
+
+    let reply = "I can help improve your sleep 😴";
+
+    if (input.toLowerCase().includes("temperature")) {
+      reply = "Try keeping temperature between 24–27°C.";
+    } else if (input.toLowerCase().includes("noise")) {
+      reply = "Noise should be below 40 dB for better sleep.";
+    } else if (input.toLowerCase().includes("light")) {
+      reply = "Lower light levels (<10 lux) help your body relax.";
+    } else if (input.toLowerCase().includes("improve")) {
+      reply = "Reduce noise, dim lights, and adjust temperature for better sleep.";
+    }
+
+    const botMessage: Message = {
+      text: reply,
+      sender: "bot",
+    };
+
+    setMessages((prev) => [...prev, userMessage, botMessage]);
+    setInput("");
+  };
+
+  return (
+    <>
+      {/* Floating Button */}
+      <button
+        onClick={() => setOpen(!open)}
+        className="fixed bottom-6 right-6 bg-gradient-to-r from-blue-700 to-indigo-800 text-white p-4 rounded-full shadow-xl hover:scale-105 transition"
+      >
+        {open ? <X /> : <MessageCircle />}
+      </button>
+
+      {/* Chat Window */}
+      {open && (
+        <div className="fixed bottom-20 right-6 w-80 h-[420px] bg-background text-foreground border rounded-2xl shadow-2xl flex flex-col overflow-hidden border">
+
+          {/* Header */}
+          <div className="p-4 border-b flex items-center gap-2 bg-primary text-primary-foreground">
+            <div className="w-2 h-2 bg-green-300 rounded-full animate-pulse" />
+            <span className="font-semibold">Sleep Assistant</span>
+          </div>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-3 space-y-2 text-sm">
+            {messages.map((msg, i) => (
+              <div
+                key={i}
+                className={`max-w-[75%] px-3 py-2 rounded-xl ${
+                  msg.sender === "user"
+                    ? "ml-auto bg-blue-600 text-white"
+                    : "mr-auto bg-muted text-foreground"
+                }`}
+              >
+                {msg.text}
+              </div>
+            ))}
+          </div>
+
+          {/* Input */}
+          <div className="p-3 border-t border-white/10 flex gap-2">
+            <input
+              className="flex-1 px-3 py-2 rounded-lg border bg-white text-gray-900 placeholder-gray-500 focus:outline-none"
+              placeholder="Ask about your sleep..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSend();
+              }}
+            />
+            <button
+              onClick={handleSend}
+              className="bg-blue-600 text-white px-4 rounded-lg hover:bg-blue-700 transition"
+            >
+              Send
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

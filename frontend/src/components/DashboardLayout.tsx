@@ -1,6 +1,7 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Chatbot } from "@/components/Chatbot";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -29,6 +30,7 @@ export function DashboardLayout({ children, title = "Dashboard" }: DashboardLayo
             {children}
           </main>
         </div>
+      <Chatbot />
       </div>
     </SidebarProvider>
   );
