@@ -1,7 +1,7 @@
 # mqtt_subscriber.py
 import json
 import paho.mqtt.client as mqtt
-from database import db
+from database import sensor_collection, ml_collection
 from datetime import datetime
 import os
 import asyncio
@@ -16,13 +16,16 @@ data_queue = Queue()  # Thread-safe queue for messages
 MQTT_BROKER = os.getenv("MQTT_URL")
 MQTT_USER = os.getenv("MQTT_USER")
 MQTT_PASS = os.getenv("MQTT_PASS")
-TOPIC = "sleepsense/user_001/sensors"
+TOPIC_SENSOR = "sleepsense/user_001/sensors"
+TOPIC_ML = "sleepsense/user_001/ml"
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
         print("✅ MQTT connected")
-        result = client.subscribe(TOPIC, qos=1)
-        print(f"📡 Subscribed to '{TOPIC}' with QoS=1. Subscribe result: {result}")
+        result_sensor = client.subscribe(TOPIC_SENSOR, qos=1)
+        result_ml = client.subscribe(TOPIC_ML, qos=1)
+        print(f"📡 Subscribed to '{TOPIC_SENSOR}' with QoS=1. Subscribe result: {result_sensor}")
+        print(f"📡 Subscribed to '{TOPIC_ML}' with QoS=1. Subscribe result: {result_ml}")
     else:
         print(f"❌ MQTT failed to connect, rc = {rc}")
         error_messages = {
@@ -43,7 +46,13 @@ def on_message(client, userdata, msg):
         data["timestamp"] = datetime.fromisoformat(data["timestamp"].replace("Z", "+00:00"))
         
         # Put data in thread-safe queue for processing
-        # 🔥 DB queue (unchanged)
+        # classify message type (default = sensor)
+        if msg.topic == TOPIC_ML:
+            msg_type = "ml"
+        else:
+            msg_type = "sensor"
+        # keep original behavior (no structural change)
+        data["msg_type"] = msg_type
         data_queue.put(data)
 
         # 🔥 WebSocket broadcast (FIXED)
@@ -78,7 +87,13 @@ async def process_data_queue():
             if not data_queue.empty():
                 data = data_queue.get(block=False)
                 try:
-                    result = await db.sensor_data.insert_one(data)
+                    msg_type = data.get("msg_type", "sensor")
+
+                    if msg_type == "ml":
+                        result = await ml_collection.insert_one(data)
+                    else:
+                        result = await sensor_collection.insert_one(data)
+                    
                     print(f"✅ Data inserted successfully. ID: {result.inserted_id}")
                 except Exception as e:
                     print(f"❌ Database insert failed: {e}")
@@ -93,7 +108,8 @@ async def start_mqtt(loop):
     
     print(f"\n🚀 Starting MQTT subscriber...")
     print(f"   MQTT Broker: {MQTT_BROKER}")
-    print(f"   Topic: {TOPIC}")
+    print(f"   Sensor Topic: {TOPIC_SENSOR}")
+    print(f"   ML Topic: {TOPIC_ML}")
     
     # Validate environment variables
     if not all([MQTT_BROKER, MQTT_USER, MQTT_PASS]):
