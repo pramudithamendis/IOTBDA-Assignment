@@ -17,13 +17,13 @@ export function SleepReadinessCard({
   light,
 }: Props) {
 
-  // ✅ Keep checks ONLY for UI indicators
+  // Keep checks ONLY for UI indicators
   const checkTemperature = () => temperature >= 24 && temperature <= 27;
   const checkHumidity = () => humidity >= 40 && humidity <= 60;
   const checkSound = () => sound < 40;
   const checkLight = () => light < 10;
 
-  // ✅ Use your weighted model
+  // Use weighted model
   const readiness = calculateSleepReadiness(
     temperature,
     humidity,
@@ -31,7 +31,7 @@ export function SleepReadinessCard({
     sound
   );
 
-  // ✅ Use label helper
+  // Use label helper
   const { label, color } = getReadinessLabel(readiness);
 
   // Map to Tailwind classes
