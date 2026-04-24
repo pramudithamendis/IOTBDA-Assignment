@@ -98,8 +98,41 @@ async def get_historical_analysis(
         {"$sort": {"_id": 1}},
     ]
 
+    session_user_hint = user_id.replace("_", "")
+    ml_pipeline = [
+        {
+            "$match": {
+                "$or": [
+                    {"user_id": user_id},
+                    {"session_id": {"$regex": session_user_hint, "$options": "i"}},
+                ]
+            }
+        },
+        {"$addFields": {"normalized_timestamp": {"$toDate": "$timestamp"}}},
+        {"$match": {"normalized_timestamp": {"$gte": start_time, "$lte": anchor_time}}},
+        {
+            "$group": {
+                "_id": {
+                    "$dateToString": {
+                        "format": bucket_format,
+                        "date": "$normalized_timestamp",
+                        "timezone": "UTC",
+                    }
+                },
+                "sleep_score": {"$avg": "$sleep_score"},
+            }
+        },
+        {"$sort": {"_id": 1}},
+    ]
+
     cursor = db.sensor_data.aggregate(pipeline)
     records = await cursor.to_list(length=500)
+    ml_cursor = db.ml_data.aggregate(ml_pipeline)
+    ml_records = await ml_cursor.to_list(length=500)
+    sleep_score_by_label = {
+        row["_id"]: round(float(row.get("sleep_score", 0.0)), 2)
+        for row in ml_records
+    }
 
     chart_data = []
     for row in records:
@@ -111,6 +144,7 @@ async def get_historical_analysis(
                 "temperature": round(float(row.get("temperature", 0.0)), 2),
                 "humidity": round(float(row.get("humidity", 0.0)), 2),
                 "movement": round(float(row.get("distance", 0.0)), 2),
+                "sleep_quality": sleep_score_by_label.get(row["_id"]),
                 "motion_events": int(row.get("motion_count", 0)),
             }
         )
