@@ -64,7 +64,8 @@ async def get_historical_analysis(
     else:
         # Overnight: use the latest 12 hours for near-term sleep analysis.
         start_time = anchor_time - timedelta(hours=12)
-        bucket_format = "%Y-%m-%d %H:00"
+        bucket_format = "%Y-%m-%d %H:%M:%S"
+
 
     pipeline = [
         {"$match": {"user_id": user_id}},
