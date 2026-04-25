@@ -270,7 +270,7 @@ const Index = () => {
           />
         </div>
          {/* Insights Section */}
-        <div className="mb-6">
+        <div className="mb-6"> <br/>
           <InsightsCard insights={insights} />
         </div>
       </div>
