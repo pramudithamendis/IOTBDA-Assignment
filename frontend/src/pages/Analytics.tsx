@@ -62,7 +62,7 @@ const Analytics = () => {
         setLoading(true);
         setError(null);
         const response = await fetch(
-          `http://localhost:8000/api/historical-analysis?user_id=user_001&timeframe=${timeframe}`,
+          `http://localhost:8000/ws/api/historical-analysis?user_id=user_001&timeframe=${timeframe}`,
           { signal: abortController.signal },
         );
 

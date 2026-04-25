@@ -2,7 +2,7 @@
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 import asyncio
-from database import db
+from app.database import db
 
 router = APIRouter(prefix="/ws")
 
