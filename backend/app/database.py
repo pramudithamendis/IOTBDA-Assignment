@@ -11,3 +11,4 @@ db = client.SphereSleep
 # Collections 
 sensor_collection = db["sensor_data"]
 ml_collection = db["ml_data"] 
+anomalies_collection = db["anomalies"]

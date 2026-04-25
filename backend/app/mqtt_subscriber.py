@@ -1,13 +1,17 @@
 # mqtt_subscriber.py
 import json
 import paho.mqtt.client as mqtt
-from database import sensor_collection, ml_collection
+from app.database import sensor_collection, ml_collection, anomalies_collection
 from datetime import datetime
 import os
 import asyncio
 import ssl
 from queue import Queue
-from routers.sensors import broadcast  
+from app.routers.sensors import broadcast  
+import joblib
+
+model = joblib.load("app/ml/anomaly_model.pkl")
+scaler = joblib.load("app/ml/scaler.pkl")
 
 fastapi_loop = None
 mqtt_client = None
@@ -87,12 +91,44 @@ async def process_data_queue():
             if not data_queue.empty():
                 data = data_queue.get(block=False)
                 try:
-                    msg_type = data.get("msg_type", "sensor")
+                    msg_type = data.pop("msg_type", "sensor")
 
                     if msg_type == "ml":
                         result = await ml_collection.insert_one(data)
                     else:
                         result = await sensor_collection.insert_one(data)
+
+                    if msg_type == "sensor":
+                        # run ML inference (or load model)
+                        X = [[
+                            data["temperature"],
+                            data["humidity"],
+                            data["sound_level"],
+                            data["light_intensity"],
+                            data["motion_detected"],
+                            data["distance"]
+                        ]]
+
+                        X_scaled = scaler.transform(X)
+                        prediction = model.predict(X_scaled)
+
+                        if prediction[0] == -1:
+                            alert = {
+                                "type": "ANOMALY_ALERT",
+                                "message": "Sleep disturbance detected",
+                                "timestamp": data["timestamp"]
+                            }
+
+                            await anomalies_collection.insert_one(alert)
+
+                            if fastapi_loop:
+                                asyncio.run_coroutine_threadsafe(
+                                    broadcast({
+                                        **alert,
+                                        "timestamp": alert["timestamp"].isoformat()
+                                        }),
+                                    fastapi_loop
+                                )
                     
                     print(f"✅ Data inserted successfully. ID: {result.inserted_id}")
                 except Exception as e:
@@ -108,6 +144,8 @@ async def start_mqtt(loop):
     
     print(f"\n🚀 Starting MQTT subscriber...")
     print(f"   MQTT Broker: {MQTT_BROKER}")
+    print(f"   MQTT User: {MQTT_USER}")
+    print(f"   MQTT Pass: {'*' * (len(MQTT_PASS) - 2) + MQTT_PASS[-2:] if MQTT_PASS and len(MQTT_PASS) > 2 else '(empty or too short!)'}")
     print(f"   Sensor Topic: {TOPIC_SENSOR}")
     print(f"   ML Topic: {TOPIC_ML}")
     
