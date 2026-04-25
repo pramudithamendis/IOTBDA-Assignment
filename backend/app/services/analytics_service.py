@@ -23,7 +23,15 @@ def analyze_sleep_trend(scores):
 
 
 def summarize_anomalies(anomalies):
-    reasons = [a.get("reason", "unknown") for a in anomalies]
+    reasons = []
+
+    for a in anomalies:
+        r = a.get("reason", [])
+
+        if isinstance(r, list):
+            reasons.extend(r)
+        else:
+            reasons.append(r)
 
     return {
         "count": len(anomalies),
@@ -35,8 +43,8 @@ def aggregate_sensors(sensors):
     if not sensors:
         return {}
 
-    temps = [s["features"]["temp"] for s in sensors if "features" in s]
-    motions = [s["features"]["motion"] for s in sensors if "features" in s]
+    temps = [s.get("temperature") for s in sensors if s.get("temperature") is not None]
+    motions = [s.get("motion_detected") for s in sensors if s.get("motion_detected") is not None]
 
     return {
         "avg_temp": round(sum(temps) / len(temps), 2) if temps else None,

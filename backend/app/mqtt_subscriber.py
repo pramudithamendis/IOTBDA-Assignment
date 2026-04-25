@@ -2,7 +2,7 @@
 import json
 import paho.mqtt.client as mqtt
 from app.database import sensor_collection, ml_collection, anomalies_collection
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import asyncio
 import ssl
@@ -16,6 +16,10 @@ scaler = joblib.load("app/ml/scaler.pkl")
 fastapi_loop = None
 mqtt_client = None
 data_queue = Queue()  # Thread-safe queue for messages
+
+# Alert cooldown: suppress repeated alerts within this window (seconds)
+ALERT_COOLDOWN_SECONDS = 30
+last_alert_time = {}  # keyed by user_id
 
 MQTT_BROKER = os.getenv("MQTT_URL")
 MQTT_USER = os.getenv("MQTT_USER")
@@ -59,14 +63,6 @@ def on_message(client, userdata, msg):
         data["msg_type"] = msg_type
         data_queue.put(data)
 
-        # 🔥 WebSocket broadcast (FIXED)
-        if fastapi_loop:
-            broadcast_data = {**data, "timestamp": data["timestamp"].isoformat()}
-            asyncio.run_coroutine_threadsafe(
-                broadcast(broadcast_data),
-                fastapi_loop
-            )
-
         print("📤 Data queued + broadcast triggered")
 
 
@@ -94,9 +90,25 @@ async def process_data_queue():
                     msg_type = data.pop("msg_type", "sensor")
 
                     if msg_type == "ml":
-                        result = await ml_collection.insert_one(data)
-                    else:
-                        result = await sensor_collection.insert_one(data)
+                        await ml_collection.insert_one(data)
+                        continue
+
+                    result = await sensor_collection.insert_one(data)
+
+                    sensor_payload = {
+                        "type": "SENSOR_DATA",
+                        "data": {
+                            "temperature": data.get("temperature"),
+                            "humidity": data.get("humidity"),
+                            "sound_level": data.get("sound_level"),
+                            "light_intensity": data.get("light_intensity"),
+                            "motion_detected": data.get("motion_detected"),
+                            "distance": data.get("distance"),
+                        },
+                        "timestamp": data["timestamp"].isoformat(),
+                    }
+
+                    await broadcast(sensor_payload)
 
                     if msg_type == "sensor":
                         # run ML inference (or load model)
@@ -113,22 +125,56 @@ async def process_data_queue():
                         prediction = model.predict(X_scaled)
 
                         if prediction[0] == -1:
-                            alert = {
-                                "type": "ANOMALY_ALERT",
-                                "message": "Sleep disturbance detected",
-                                "timestamp": data["timestamp"]
-                            }
+                            user_id = data.get("user_id", "unknown")
+                            now = datetime.utcnow()
 
-                            await anomalies_collection.insert_one(alert)
+                            # Check cooldown — skip if last alert was too recent
+                            if user_id in last_alert_time and (now - last_alert_time[user_id]).total_seconds() < ALERT_COOLDOWN_SECONDS:
+                                print(f"⏳ Alert cooldown active for {user_id}, skipping broadcast")
+                            else:
+                                last_alert_time[user_id] = now
 
-                            if fastapi_loop:
-                                asyncio.run_coroutine_threadsafe(
-                                    broadcast({
-                                        **alert,
-                                        "timestamp": alert["timestamp"].isoformat()
-                                        }),
-                                    fastapi_loop
-                                )
+                                reason = []
+                                if data["motion_detected"] > 1:
+                                    reason.append("high_motion")
+
+                                if data["temperature"] > 30:
+                                    reason.append("high_temperature")
+
+                                if data["sound_level"] > 180:
+                                    reason.append("high_noise")
+
+                                if data["light_intensity"] > 10:
+                                    reason.append("light_exposure")
+
+                                if not reason:
+                                    reason.append("unknown_pattern")
+
+                                alert = {
+                                    "type": "ANOMALY_ALERT",
+                                    "message": "Sleep disturbance detected",
+                                    "user_id": user_id,
+                                    "session_id": data["session_id"],
+                                    "data": {
+                                        "temperature": data.get("temperature"),
+                                        "humidity": data.get("humidity"),
+                                        "sound_level": data.get("sound_level"),
+                                        "light_intensity": data.get("light_intensity"),
+                                        "motion_detected": data.get("motion_detected"),
+                                        "distance": data.get("distance")
+                                    },
+                                    "timestamp": data["timestamp"].isoformat(),
+                                    "reason": reason
+                                }
+
+                                await anomalies_collection.insert_one({
+                                    **alert,
+                                    "timestamp": data["timestamp"]  # store datetime in DB
+                                })
+
+                                # Already on the event loop, await directly
+                                await broadcast(alert)
+
                     
                     print(f"✅ Data inserted successfully. ID: {result.inserted_id}")
                 except Exception as e:
