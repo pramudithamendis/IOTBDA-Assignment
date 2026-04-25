@@ -61,31 +61,24 @@ const Index = () => {
           setSound(data.data.sound_level);
           setHistory((prev) => [...prev, data.data.sound_level].slice(-20));
         }
+        if (data.data?.light_intensity !== undefined) {
+          setLightIntensity(data.data.light_intensity);
+          setLightIntensityHistory((prev) => [...prev, data.data.light_intensity].slice(-20));
+        }
+        if (data.data?.temperature !== undefined) {
+          setTemperature(data.data.temperature);
+          setTempHistory((prev) => [...prev, data.data.temperature].slice(-20));
+        }
+        if (data.data?.humidity !== undefined) {
+          setHumidity(data.data.humidity);
+          setHumidityHistory((prev) => [...prev, data.data.humidity].slice(-20));
+        }
 
         setLastUpdated(new Date().toISOString());
         setUpdateCount((prev) => prev + 1);
       }
 
-      if (data.light_intensity !== undefined) {
-        setLightIntensity(data.light_intensity);
-        setLightIntensityHistory((prev) => [...prev, data.light_intensity].slice(-20));
-        setLastUpdated(new Date().toISOString());
-        setUpdateCount((prev) => prev + 1);
-      }
-
-      if (data.temperature !== undefined) {
-        setTemperature(data.temperature);
-        setTempHistory((prev) => [...prev, data.temperature].slice(-20));
-        setLastUpdated(new Date().toISOString());
-        setUpdateCount((prev) => prev + 1);
-      }
-
-      if (data.humidity !== undefined) {
-        setHumidity(data.humidity);
-        setHumidityHistory((prev) => [...prev, data.humidity].slice(-20));
-        setLastUpdated(new Date().toISOString());
-        setUpdateCount((prev) => prev + 1);
-      }
+      
 
       // -----------------------------
       // ANOMALY ALERT STREAM
