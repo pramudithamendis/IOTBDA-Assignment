@@ -4,11 +4,11 @@ from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 import asyncio
 from database import db
 
-router = APIRouter()
+router = APIRouter(prefix="/ws")
 
 connected_clients = set()
 
-@router.websocket("/ws/sensors")
+@router.websocket("/sensors")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     connected_clients.add(websocket)

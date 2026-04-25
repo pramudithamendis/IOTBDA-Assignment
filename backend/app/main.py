@@ -1,12 +1,13 @@
 # main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware  # ADD
-from mqtt_subscriber import start_mqtt, stop_mqtt
+from app.mqtt_subscriber import start_mqtt, stop_mqtt
 from dotenv import load_dotenv
-from database import db
+from app.database import db
 import asyncio
 from datetime import datetime
-from routers.sensors import router as sensors_router
+from app.routers.sensors import router as sensors_router
+from app.routers.chat import router as chat_router
 
 load_dotenv()
 
@@ -23,6 +24,7 @@ app.add_middleware(
 
 # FIX: remove prefix so WebSocket is at /ws/sensors not /sensors/ws/sensors
 app.include_router(sensors_router)
+app.include_router(chat_router)
 
 @app.on_event("startup")
 async def startup_event():

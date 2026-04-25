@@ -3,3 +3,8 @@ uvicorn[standard]
 paho-mqtt 
 motor 
 python-dotenv
+scikit-learn==1.6.1
+joblib
+numpy
+google-generativeai
+

@@ -4,6 +4,7 @@ import { SoundCard } from "@/components/real-time-cards/SoundCard";
 import { LightCard } from "@/components/real-time-cards/LightCard";
 import { TemperatureCard } from "@/components/real-time-cards/TemperatureCard";
 import { HumidityCard } from "@/components/real-time-cards/HumidityCard";
+import { AlertCard } from "@/components/real-time-cards/AlertCard";
 import { ConnectionCard } from "@/components/ConnectionCard";
 import { SleepReadinessCard } from "@/components/SleepReadinessCard";
 import { SleepQualityCard } from "@/components/SleepQualityCard";
@@ -23,6 +24,8 @@ const Index = () => {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [updateCount, setUpdateCount] = useState(0);
   
+  // Alerts State
+  const [alerts, setAlerts] = useState([]);
 
   useEffect(() => {
   let socket: WebSocket;
@@ -50,9 +53,15 @@ const Index = () => {
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
 
-      if (data.sound_level !== undefined) {
-        setSound(data.sound_level);
-        setHistory((prev) => [...prev, data.sound_level].slice(-20));
+      // -----------------------------
+      // SENSOR DATA STREAM
+      // -----------------------------
+      if (data.type === "SENSOR_DATA") {
+        if (data.data?.sound_level !== undefined) {
+          setSound(data.data.sound_level);
+          setHistory((prev) => [...prev, data.data.sound_level].slice(-20));
+        }
+
         setLastUpdated(new Date().toISOString());
         setUpdateCount((prev) => prev + 1);
       }
@@ -76,6 +85,23 @@ const Index = () => {
         setHumidityHistory((prev) => [...prev, data.humidity].slice(-20));
         setLastUpdated(new Date().toISOString());
         setUpdateCount((prev) => prev + 1);
+      }
+
+      // -----------------------------
+      // ANOMALY ALERT STREAM
+      // -----------------------------
+      if (data.type === "ANOMALY_ALERT") {
+        const id = Date.now();
+
+        const newAlert = {
+          id,
+          message: data.message,
+          reasons: data.reason,
+          timestamp: data.timestamp,
+          data: data.data,
+        };
+
+        setAlerts((prev) => [newAlert, ...prev]);
       }
     };
   };
@@ -150,6 +176,14 @@ const Index = () => {
             history={humidityHistory}
             min={minHumidity}
             max={maxHumidity}
+          />
+        </div>
+
+        {/* Anomaly alerts */}
+        <div className="mt-6">
+          <AlertCard
+            alerts={alerts}
+            onDismiss={(id) => setAlerts((prev) => prev.filter((a) => a.id !== id))}
           />
         </div>
       </div>
