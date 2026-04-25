@@ -39,6 +39,8 @@ def build_prompt(message, context):
     """
     return user_prompt
 
+from fastapi import HTTPException
+
 def call_gemini(prompt):
     """
     Calls the Gemini model.
@@ -50,4 +52,7 @@ def call_gemini(prompt):
         response = model.generate_content(prompt)
         return response.text
     except Exception as e:
-        return f"Error calling Gemini: {str(e)}"
+        error_msg = str(e)
+        if "429" in error_msg:
+            raise HTTPException(status_code=429, detail="AI limit reached")
+        raise HTTPException(status_code=500, detail=error_msg)

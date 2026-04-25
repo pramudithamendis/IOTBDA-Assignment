@@ -10,8 +10,9 @@ export function Chatbot() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input.trim()) return;
 
     const userMessage: Message = {
@@ -31,13 +32,63 @@ export function Chatbot() {
       reply = "Reduce noise, dim lights, and adjust temperature for better sleep.";
     }
 
+   setMessages((prev) => [...prev, userMessage]);
+   setInput("");
+   setLoading(true);
+
+    try{
+
+      const res = await fetch("http://localhost:8000/chat/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: input,
+        user_id: "user_001",
+      }),
+    });
+
+    if (!res.ok) {
+        throw { status: res.status };
+    }
+
+    const data = await res.json();
+
     const botMessage: Message = {
-      text: reply,
+      text: formatResponse(data.response),
       sender: "bot",
     };
 
-    setMessages((prev) => [...prev, userMessage, botMessage]);
-    setInput("");
+    setMessages((prev) => [...prev, botMessage]);
+
+    }
+    catch (err: any) {
+      if (err?.status === 429 || err?.code === 429) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            text: "⚠️ AI limit reached. Please try again in a few seconds.",
+            sender: "bot",
+          },
+        ]);
+      }
+      else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            text: "⚠️ Unable to process your request right now.",
+            sender: "bot",
+          },
+        ]);
+  }}
+    finally{
+      setLoading(false);
+    }
+  };
+  const formatResponse = (text: string) => {
+  return text
+    .replace(/\*/g, "") // remove bullets
+    .replace(/\n+/g, " ") // remove line breaks
+    .trim();
   };
 
   return (
@@ -81,6 +132,7 @@ export function Chatbot() {
             <input
               className="flex-1 px-3 py-2 rounded-lg border bg-white text-gray-900 placeholder-gray-500 focus:outline-none"
               placeholder="Ask about your sleep..."
+              disabled={loading}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
@@ -91,7 +143,7 @@ export function Chatbot() {
               onClick={handleSend}
               className="bg-blue-600 text-white px-4 rounded-lg hover:bg-blue-700 transition"
             >
-              Send
+              {loading ? "Sending" : "Send"}
             </button>
           </div>
         </div>
