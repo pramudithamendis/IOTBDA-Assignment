@@ -6,7 +6,7 @@ from fastapi import APIRouter
 import pandas as pd
 from pathlib import Path
 
-from services.insights_service import generate_insights_from_df
+from app.services.insights_service import generate_insights_from_df
 
 router = APIRouter()
 

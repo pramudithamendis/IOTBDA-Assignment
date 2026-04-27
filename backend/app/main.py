@@ -1,13 +1,13 @@
 # main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware  # ADD
-from mqtt_subscriber import start_mqtt, stop_mqtt
+from app.mqtt_subscriber import start_mqtt, stop_mqtt
 from dotenv import load_dotenv
-from database import db
+from app.database import db
 import asyncio
 from datetime import datetime
-from routers.sensors import router as sensors_router
-from routers.insights_router import router as insights_router
+from app.routers.sensors import router as sensors_router
+from app.routers.insights_router import router as insights_router
 
 load_dotenv()
 

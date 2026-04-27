@@ -1,13 +1,13 @@
 # mqtt_subscriber.py
 import json
 import paho.mqtt.client as mqtt
-from database import db
+from app.database import db
 from datetime import datetime
 import os
 import asyncio
 import ssl
 from queue import Queue
-from routers.sensors import broadcast  
+from app.routers.sensors import broadcast  
 
 fastapi_loop = None
 mqtt_client = None
