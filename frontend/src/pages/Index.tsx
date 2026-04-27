@@ -12,23 +12,58 @@ import { InsightsCard } from "@/components/InsightsCard";
 const Index = () => {
   const [sound, setSound] = useState(0);
   const [history, setHistory] = useState<number[]>([]);
+
   const [lightIntensity, setLightIntensity] = useState(0);
   const [lightIntensityHistory, setLightIntensityHistory] = useState<number[]>([]);
+
   const [temperature, setTemperature] = useState(0);
   const [tempHistory, setTempHistory] = useState<number[]>([]);
+  
   const [humidity, setHumidity] = useState(0);
   const [humidityHistory, setHumidityHistory] = useState<number[]>([]);
 
-  // connection state
   const [isConnected, setIsConnected] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [updateCount, setUpdateCount] = useState(0);
 
-  // insights
   const [insights, setInsights] = useState<any[]>([]);
 
   // =========================
-  // WebSocket connection
+  // Mongo fallback (initial load)
+  // =========================
+  useEffect(() => {
+    const loadFallback = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/sensors/latest?limit=20");
+        const data = await res.json();
+
+        if (!Array.isArray(data) || data.length === 0) return;
+
+        const latest = data[0];
+
+        setTemperature(Number(latest.temperature ?? 0));
+        setHumidity(Number(latest.humidity ?? 0));
+        setSound(Number(latest.sound_level ?? 0));
+        setLightIntensity(Number(latest.light_intensity ?? 0));
+
+        setTempHistory(data.map(d => Number(d.temperature ?? 0)));
+        setHumidityHistory(data.map(d => Number(d.humidity ?? 0)));
+        setHistory(data.map(d => Number(d.sound_level ?? 0)));
+        setLightIntensityHistory(data.map(d => Number(d.light_intensity ?? 0)));
+
+        setLastUpdated(latest.timestamp ?? null);
+        setUpdateCount(data.length);
+
+      } catch (err) {
+        console.error("Fallback load failed:", err);
+      }
+    };
+
+    loadFallback();
+  }, []);
+
+  // =========================
+  // WebSocket (live updates)
   // =========================
   useEffect(() => {
     let socket: WebSocket;
@@ -39,12 +74,10 @@ const Index = () => {
 
       socket.onopen = () => {
         setIsConnected(true);
-        console.log("WebSocket connected");
       };
 
       socket.onclose = () => {
         setIsConnected(false);
-        console.log("WebSocket disconnected, retrying in 2s...");
         reconnectTimer = setTimeout(connect, 2000);
       };
 
@@ -57,34 +90,33 @@ const Index = () => {
         const data = JSON.parse(event.data);
 
         if (data.sound_level !== undefined) {
-          setSound(data.sound_level);
-          setHistory((prev) => [...prev, data.sound_level].slice(-20));
+          setSound(Number(data.sound_level));
+          setHistory(prev => [...prev, Number(data.sound_level)].slice(-20));
         }
 
         if (data.light_intensity !== undefined) {
-          setLightIntensity(data.light_intensity);
-          setLightIntensityHistory((prev) =>
-            [...prev, data.light_intensity].slice(-20)
+          setLightIntensity(Number(data.light_intensity));
+          setLightIntensityHistory(prev =>
+            [...prev, Number(data.light_intensity)].slice(-20)
           );
         }
 
         if (data.temperature !== undefined) {
-          setTemperature(data.temperature);
-          setTempHistory((prev) =>
-            [...prev, data.temperature].slice(-20)
+          setTemperature(Number(data.temperature));
+          setTempHistory(prev =>
+            [...prev, Number(data.temperature)].slice(-20)
           );
         }
 
         if (data.humidity !== undefined) {
-          setHumidity(data.humidity);
-          setHumidityHistory((prev) =>
-            [...prev, data.humidity].slice(-20)
+          setHumidity(Number(data.humidity));
+          setHumidityHistory(prev =>
+            [...prev, Number(data.humidity)].slice(-20)
           );
         }
 
         setLastUpdated(new Date().toISOString());
-        setUpdateCount((prev) => prev + 1);
-        
+        setUpdateCount(prev => prev + 1);
       };
     };
 
@@ -97,7 +129,7 @@ const Index = () => {
   }, []);
 
   // =========================
-  // Fetch insights (REST API)
+  // Fetch insights
   // =========================
   useEffect(() => {
     const fetchInsights = async () => {
@@ -111,10 +143,7 @@ const Index = () => {
       }
     };
 
-    // initial fetch
     fetchInsights();
-
-    // refresh every 5 seconds
     const interval = setInterval(fetchInsights, 5000);
 
     return () => clearInterval(interval);
@@ -150,75 +179,10 @@ const Index = () => {
     ? Math.max(...humidityHistory)
     : humidity;
 
-    const generateRealtimeInsights = () => {
-      const insights = [];
-
-      if (sound > 40) {
-        insights.push({
-          title: "🔊 Noise Alert",
-          description: "Noise is currently high and may disturb your sleep.",
-          type: "warning",
-        });
-      } else {
-        insights.push({
-          title: "🌙 Quiet Environment",
-          description: "Noise levels are currently low — ideal for sleep.",
-          type: "positive",
-        });
-      }
-
-      if (temperature >= 24 && temperature <= 27) {
-        insights.push({
-          title: "🌡 Optimal Temperature",
-          description: "Room temperature is within the ideal range.",
-          type: "positive",
-        });
-      } else {
-        insights.push({
-          title: "🌡 Temperature Issue",
-          description: "Temperature is outside the ideal range.",
-          type: "warning",
-        });
-      }
-
-      if (lightIntensity < 10) {
-        insights.push({
-          title: "💡 Low Light",
-          description: "Lighting is suitable for sleep.",
-          type: "positive",
-        });
-      } else {
-        insights.push({
-          title: "💡 Too Bright",
-          description: "Light levels are too high.",
-          type: "warning",
-        });
-      }
-
-      if (humidity >= 40 && humidity <= 60) {
-        insights.push({
-          title: "💧 Comfortable Humidity",
-          description: "Humidity is in a comfortable range.",
-          type: "positive",
-        });
-      } else {
-        insights.push({
-          title: "💧 Humidity Issue",
-          description: "Humidity may affect sleep comfort.",
-          type: "warning",
-        });
-      }
-
-    return insights;
-  };
-  // =========================
-  // UI
-  // =========================
   return (
     <DashboardLayout title="Dashboard">
       <div className="flex flex-col w-full h-full p-6">
 
-        {/* Connection */}
         <div className="mb-6">
           <ConnectionCard
             isConnected={isConnected}
@@ -227,7 +191,6 @@ const Index = () => {
           />
         </div>
 
-        {/* Sleep Summary */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
           <SleepQualityCard />
 
@@ -239,7 +202,6 @@ const Index = () => {
           />
         </div>
 
-        {/* Sensors */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
           <LightCard
             lightIntensity={lightIntensity}
@@ -269,10 +231,12 @@ const Index = () => {
             max={maxHumidity}
           />
         </div>
-         {/* Insights Section */}
-        <div className="mb-6"> <br/>
+
+        <div className="mb-6">
+          <br />
           <InsightsCard insights={insights} />
         </div>
+
       </div>
     </DashboardLayout>
   );
