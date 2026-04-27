@@ -8,6 +8,7 @@ import asyncio
 from datetime import datetime
 from app.routers.sensors import router as sensors_router
 from app.routers.chat import router as chat_router
+from app.routers.insights_router import router as insights_router
 
 load_dotenv()
 
@@ -25,6 +26,7 @@ app.add_middleware(
 # FIX: remove prefix so WebSocket is at /ws/sensors not /sensors/ws/sensors
 app.include_router(sensors_router)
 app.include_router(chat_router)
+app.include_router(insights_router)
 
 @app.on_event("startup")
 async def startup_event():

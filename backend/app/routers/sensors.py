@@ -155,3 +155,14 @@ async def get_historical_analysis(
         "timeframe": timeframe,
         "points": chart_data,
     }
+    
+@router.get("/sensors/latest")
+async def get_latest_sensor_data(limit: int = 20):
+    cursor = db.sensor_data.find().sort("_id", -1).limit(limit)
+    data = await cursor.to_list(length=limit)
+
+    # convert ObjectId → string
+    for d in data:
+        d["_id"] = str(d["_id"])
+
+    return data    
