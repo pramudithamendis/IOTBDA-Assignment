@@ -29,7 +29,9 @@ const Index = () => {
   // Alerts State
   const [alerts, setAlerts] = useState<any[]>([]);
 
+  // Insights & Readiness
   const [insights, setInsights] = useState<any[]>([]);
+  const [readiness, setReadiness] = useState(60);
 
   // =========================
   // Mongo fallback (initial load)
@@ -177,17 +179,21 @@ const Index = () => {
   }, []);
 
   // =========================
-  // Fetch insights
+  // Fetch insights & readiness
   // =========================
   useEffect(() => {
     const fetchInsights = async () => {
       try {
         const res = await fetch("http://localhost:8000/insights");
         const data = await res.json();
+
         setInsights(data.insights || []);
+        setReadiness(data.readiness ?? 60);
+
       } catch (err) {
         console.error("Failed to fetch insights", err);
         setInsights([]);
+        setReadiness(60);
       }
     };
 
@@ -242,7 +248,9 @@ const Index = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
           <SleepQualityCard />
 
+          {/* ML-based readiness */}
           <SleepReadinessCard
+            readiness={readiness}
             temperature={temperature}
             humidity={humidity}
             sound={sound}
