@@ -1,114 +1,131 @@
-# =========================================================
-# Service to generate user-friendly rule-based insights
-# =========================================================
-
 import pandas as pd
 
+
+# =========================
+# Map cluster → readiness score
+# =========================
+def map_cluster_to_readiness(cluster: str) -> int:
+    if cluster == "Good Sleep":
+        return 90
+    elif cluster == "Light Sleep":
+        return 70
+    elif cluster == "Disturbed Sleep":
+        return 50
+    return 60
+
+
+# =========================
+# Generate Insights & Readiness
+# =========================
 def generate_insights_from_df(df: pd.DataFrame):
     insights = []
+    readiness = 60  # default fallback
 
     # =========================
-    # 0. Safety checks
+    # Safety check
     # =========================
     if df is None or df.empty:
-        return [{
-            "title": "No Data Available",
-            "description": "Sleep data is not available yet.",
-            "type": "warning"
-        }]
+        return {
+            "insights": [{
+                "title": "No Data Available",
+                "description": "Sleep data is not available yet.",
+                "type": "warning"
+            }],
+            "readiness": readiness
+        }
 
-    # Clean column names (important)
     df.columns = df.columns.str.strip()
 
     # =========================
-    # 1. Cluster-based insights (primary)
+    # 1. CORE ML INSIGHT (Pattern)
     # =========================
+    dominant_cluster = None
+
     if "cluster_name" in df.columns:
-        cluster_counts = df["cluster_name"].value_counts()
-        total = len(df)
+        dominant_cluster = df["cluster_name"].value_counts().idxmax()
 
-        for cluster, count in cluster_counts.items():
-            percentage = (count / total) * 100
+        # derive readiness from ML output
+        readiness = map_cluster_to_readiness(dominant_cluster)
 
-            # 🌙 Good Sleep
-            if cluster == "Good Sleep":
-                insights.append({
-                    "title": "😴 Restful Sleep",
-                    "description": "Most of your recent sleep sessions were calm and well-balanced.",
-                    "type": "positive"
-                })
+        if dominant_cluster == "Good Sleep":
+            insights.append({
+                "title": "Stable Sleep Pattern",
+                "description": "Your sessions consistently show strong and balanced sleep behaviour.",
+                "type": "positive"
+            })
 
-            # ⚠ Light Sleep
-            elif cluster == "Light Sleep":
-                insights.append({
-                    "title": "⚠ Light Sleep Detected",
-                    "description": "Some of your sleep sessions were light and may not feel fully refreshing.",
-                    "type": "warning"
-                })
+        elif dominant_cluster == "Light Sleep":
+            insights.append({
+                "title": "Light Sleep Trend",
+                "description": "Your sleep shows mild instability across multiple sessions.",
+                "type": "warning"
+            })
 
-            # 🚨 Disturbed Sleep
-            elif cluster == "Disturbed Sleep":
-                insights.append({
-                    "title": "🚨 Disturbed Sleep",
-                    "description": "You experienced interruptions during sleep, possibly due to noise or movement.",
-                    "type": "warning"
-                })
+        elif dominant_cluster == "Disturbed Sleep":
+            insights.append({
+                "title": "Disturbed Sleep Pattern",
+                "description": "Frequent disruptions are observed in your sleep behaviour.",
+                "type": "warning"
+            })
 
     # =========================
-    # 2. Feature-based insights (simple rules)
+    # 2. CONTRIBUTING FACTORS (NO OVERLAP)
     # =========================
-    try:
+
+    # 🔊 Noise → Stability factor
+    if "sound_std" in df.columns:
         avg_noise = df["sound_std"].mean()
-        avg_motion = df["motion_rate"].mean()
-        avg_light = df["light_avg"].mean()
 
-        # 🔊 Noise
         if avg_noise < 0.1:
             insights.append({
-                "title": "🌙 Quiet Environment",
-                "description": "Your sleeping environment is generally quiet — great for deep sleep.",
+                "title": "Low Noise Environment",
+                "description": "Stable sound levels support uninterrupted sleep cycles.",
                 "type": "positive"
             })
         else:
             insights.append({
-                "title": "🔊 Noise Alert",
-                "description": "Noise levels were slightly high and may affect your sleep quality.",
+                "title": "Noise Variability Detected",
+                "description": "Fluctuating sound levels may be affecting sleep continuity.",
                 "type": "warning"
             })
 
-        # 🏃 Movement
-        if avg_motion > 0.1:
-            insights.append({
-                "title": "🏃 Restlessness Detected",
-                "description": "Frequent movement was detected, which may indicate restless sleep.",
-                "type": "warning"
-            })
+    # Light → Circadian factor
+    if "light_avg" in df.columns:
+        avg_light = df["light_avg"].mean()
 
-        # 💡 Light
-        if avg_light < 0.05:
+        if avg_light < 0.1:
             insights.append({
-                "title": "💡 Optimal Lighting",
-                "description": "Your room lighting is well-suited for better sleep.",
+                "title": "Dark Sleep Environment",
+                "description": "Lower light exposure supports deeper sleep phases.",
                 "type": "positive"
             })
         else:
             insights.append({
-                "title": "💡 Light Exposure",
-                "description": "Higher light levels may be affecting your ability to fall into deep sleep.",
+                "title": "Light Exposure Detected",
+                "description": "Higher light levels may interfere with sleep depth.",
                 "type": "warning"
             })
 
-    except Exception as e:
-        print("Feature-based insight error:", e)
+    # Motion → Restlessness factor (only if relevant)
+    if "motion_rate" in df.columns:
+        avg_motion = df["motion_rate"].mean()
+
+        if avg_motion > 0.15:
+            insights.append({
+                "title": "Elevated Movement During Sleep",
+                "description": "Frequent movement suggests possible restlessness.",
+                "type": "warning"
+            })
 
     # =========================
-    # 3. Ensure at least 1 insight
+    # 3. PRIORITY & LIMIT
     # =========================
-    if len(insights) == 0:
-        insights.append({
-            "title": "Sleep Monitoring Active",
-            "description": "We are currently analyzing your sleep patterns.",
-            "type": "positive"
-        })
 
-    return insights
+    priority = {"warning": 0, "positive": 1, "neutral": 2}
+
+    insights = sorted(insights, key=lambda x: priority[x["type"]])
+
+    return {
+        "insights": insights[:5],
+        "readiness": readiness
+    }
